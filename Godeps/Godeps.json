@@ -1,0 +1,28 @@
+{
+	"ImportPath": "github.com/gerryeng/remitticker",
+	"GoVersion": "go1.4.2",
+	"Deps": [
+		{
+			"ImportPath": "github.com/gin-gonic/gin",
+			"Comment": "v1.0rc1-55-g43bcac2",
+			"Rev": "43bcac2031540abf2d6347aa1e92177fad50cd1c"
+		},
+		{
+			"ImportPath": "github.com/manucorporat/sse",
+			"Rev": "404710eaa45fcb6ac1731ce1808110e18594c3c4"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "d67e0b7d1797975196499f79bcc322c08b9f218b"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "621fff363a1d9ad7fdd0bfa9d80a42881267deb4"
+		},
+		{
+			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
+			"Comment": "v5.5.1",
+			"Rev": "1d61bf31487322f9bffa4d9f1eda4a53175b58dd"
+		}
+	]
+}

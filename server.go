@@ -1,12 +1,13 @@
 package main
 
 import (
-"time"
-"github.com/gin-gonic/gin"
-"strconv"
-"encoding/json"
-"net/http"
-"io/ioutil"
+	"encoding/json"
+	"github.com/gin-gonic/gin"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
 )
 
 // rate acts a cache for the calculated rate
@@ -57,8 +58,8 @@ func USDSGDRate() (rate float64, err error) {
 		return
 	}
 
-	// Factor in Coinbase fees 
-	cbBuyPrice *= (1 - COINBASE_FEES_PERCENT / 100 )
+	// Factor in Coinbase fees
+	cbBuyPrice *= (1 - COINBASE_FEES_PERCENT/100)
 
 	chSellPrice, err := CoinHakoSellPrice()
 	if err != nil {
@@ -66,7 +67,7 @@ func USDSGDRate() (rate float64, err error) {
 	}
 
 	// Factor in Coinhako Fees
-	chSellPrice *= (1 + COINHAKO_FEES_PERCENT / 100)
+	chSellPrice *= (1 + COINHAKO_FEES_PERCENT/100)
 
 	rate = chSellPrice / cbBuyPrice
 	return
@@ -86,9 +87,8 @@ func RatesPoller() {
 func handleRateRequest(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"rate": rate,
-		})
+	})
 }
-
 
 func StartServer() {
 
@@ -97,7 +97,12 @@ func StartServer() {
 	r := gin.Default()
 	r.GET("/rate", handleRateRequest)
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	r.Run(":" + port)
 }
 
 func main() {
