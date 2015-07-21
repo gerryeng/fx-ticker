@@ -18,7 +18,7 @@ var sgdUsdRate float64
 const (
 
 	// Fees that each exchange charges
-	FEES_PERCENT = 2.00
+	FEES_PERCENT = 0.5
 
 	// How frequently should we update the rates?
 	POLL_INTERVAL_SECONDS = 1
@@ -72,8 +72,8 @@ func USDSGDRates() (usdSgdRate float64, sgdUsdRate float64, err error) {
 		return
 	}
 
-	usdSgdRate = chSellPrice / cbBuyPrice * (1 + FEES_PERCENT/100)
-	sgdUsdRate = cbSellPrice / chBuyPrice * (1 + FEES_PERCENT/100)
+	usdSgdRate = chSellPrice / cbBuyPrice //* (1 - FEES_PERCENT/100)
+	sgdUsdRate = cbSellPrice / chBuyPrice // * (1 - FEES_PERCENT/100)
 
 	return
 }
