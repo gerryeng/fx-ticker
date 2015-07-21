@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
@@ -11,40 +12,48 @@ import (
 )
 
 // rate acts a cache for the calculated rate
-var rate float64
+var usdSgdRate float64
+var sgdUsdRate float64
 
 const (
 
 	// Fees that each exchange charges
-	COINBASE_FEES_PERCENT = 1.00
-	COINHAKO_FEES_PERCENT = 1.00
+	FEES_PERCENT = 2.00
 
 	// How frequently should we update the rates?
 	POLL_INTERVAL_SECONDS = 1
 )
 
-func CoinbaseBuyPrice() (price float64, err error) {
+func CoinbasePrice() (buyPrice float64, sellPrice float64, err error) {
 	priceJson, err := httpGetJson("https://api.exchange.coinbase.com/products/BTC-USD/ticker")
 	if err != nil {
 		return
 	}
 
-	price, err = strconv.ParseFloat(priceJson["price"].(string), 64)
+	price, err := strconv.ParseFloat(priceJson["price"].(string), 64)
 	if err != nil {
 		return
 	}
 
+	buyPrice = price
+	sellPrice = price
+
 	return
 }
 
-func CoinHakoSellPrice() (price float64, err error) {
+func CoinHakoPrice() (buyPrice float64, sellPrice float64, err error) {
 	priceJson, err := httpGetJson("https://coinhako.com/api/v1/price/currency/BTCSGD")
 	if err != nil {
 		return
 	}
 
 	priceData := priceJson["data"].(map[string]interface{})
-	price, err = strconv.ParseFloat(priceData["buy_price"].(string), 64)
+	buyPrice, err = strconv.ParseFloat(priceData["buy_price"].(string), 64)
+	if err != nil {
+		return
+	}
+
+	sellPrice, err = strconv.ParseFloat(priceData["sell_price"].(string), 64)
 	if err != nil {
 		return
 	}
@@ -52,41 +61,47 @@ func CoinHakoSellPrice() (price float64, err error) {
 	return
 }
 
-func USDSGDRate() (rate float64, err error) {
-	cbBuyPrice, err := CoinbaseBuyPrice()
+func USDSGDRates() (usdSgdRate float64, sgdUsdRate float64, err error) {
+	cbBuyPrice, cbSellPrice, err := CoinbasePrice()
 	if err != nil {
 		return
 	}
 
-	// Factor in Coinbase fees
-	cbBuyPrice *= (1 - COINBASE_FEES_PERCENT/100)
-
-	chSellPrice, err := CoinHakoSellPrice()
+	chBuyPrice, chSellPrice, err := CoinHakoPrice()
 	if err != nil {
 		return
 	}
 
-	// Factor in Coinhako Fees
-	chSellPrice *= (1 + COINHAKO_FEES_PERCENT/100)
+	usdSgdRate = chSellPrice / cbBuyPrice * (1 + FEES_PERCENT/100)
+	sgdUsdRate = cbSellPrice / chBuyPrice * (1 + FEES_PERCENT/100)
 
-	rate = chSellPrice / cbBuyPrice
 	return
 }
 
 func RatesPoller() {
 	for {
-		rateResp, err := USDSGDRate()
+		usdSgdResp, sgdUsdResp, err := USDSGDRates()
 		if err != nil {
 			panic(err)
 		}
-		rate = rateResp
+		usdSgdRate = usdSgdResp
+		sgdUsdRate = sgdUsdResp
 		time.Sleep(time.Second * POLL_INTERVAL_SECONDS)
 	}
 }
 
 func handleRateRequest(c *gin.Context) {
 	c.JSON(200, gin.H{
-		"rate": rate,
+		"USDSGD": gin.H{
+			"rate":          fmt.Sprintf("%.4f", usdSgdRate),
+			"buy_exchange":  "coinbase",
+			"sell_exchange": "coinhako",
+		},
+		"SGDUSD": gin.H{
+			"rate":          fmt.Sprintf("%.4f", sgdUsdRate),
+			"buy_exchange":  "coinhako",
+			"sell_exchange": "coinbase",
+		},
 	})
 }
 
@@ -95,6 +110,7 @@ func StartServer() {
 	go RatesPoller()
 
 	r := gin.Default()
+	r.Use(corsMiddleware())
 	r.GET("/rate", handleRateRequest)
 
 	port := os.Getenv("PORT")
@@ -107,6 +123,13 @@ func StartServer() {
 
 func main() {
 	StartServer()
+}
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	}
 }
 
 func httpGetJson(url string) (jsonResp map[string]interface{}, err error) {
